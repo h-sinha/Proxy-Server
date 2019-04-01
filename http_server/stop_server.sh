@@ -1,0 +1,1 @@
+kill $(ps aux | grep 'python -m http.server --cgi *' | awk '{print $2}') 2>/dev/null
