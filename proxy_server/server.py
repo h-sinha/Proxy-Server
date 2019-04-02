@@ -12,15 +12,15 @@ while True:
     request = client_socket.recv(1024)
     print (request)
     http_response = '''HTTP/1.1 200 OK
-Content-Length: 88
-Content-Type: text/html
-<html>
+Content-Type: text/html   
+\r\n<html>
 <body>
 <h1>Hello, World!</h1>
 </body>
-</html>    
+</html>
 '''
     client_socket.send(http_response.encode())
-    client_socket.close()
+    client_socket.send(data.encode())
+    # client_socket.close()
     # ct = client_thread(clientsocket)
     # ct.run()
