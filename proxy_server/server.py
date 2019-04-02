@@ -6,6 +6,7 @@ proxy_socket.bind(('', 20100))
 proxy_socket.listen(10)
 
 data = []
+buffer_size = 32
 with open("blacklist.txt", "r") as f:
     data = f.readlines()
     for i in range(len(data)):
@@ -16,15 +17,15 @@ def forward_request(client_socket, http_request, server, port):
     proxy_client_socket.connect((server, port))
     proxy_client_socket.send(http_request)
     response = []
+    i = 1
     while True: 
-        print("gm")
-        data = proxy_client_socket.recv(1024) 
-        print(data)
-        if len(data) < 1024:
-            response.append(data.decode())
+        data = proxy_client_socket.recv(buffer_size) 
+        if len(data) < buffer_size:
+            response.append(data)
             break
-        response.append(data.decode())
-    return "".join(response)
+        response.append(data)
+        i = i + 1
+    return b''.join(response)
 
 def is_Blocked(host):
     for x in data:
@@ -34,7 +35,7 @@ def is_Blocked(host):
 
 def get_request(client_socket, client_addr):
     request = client_socket.recv(1024)
-    headers = request.decode('ascii').split('\r\n')
+    headers = request.decode().split('\r\n')
     http_header = {}
     port = 80
     for i in range(len(headers)):
@@ -52,10 +53,10 @@ Content-Type: text/html
 </body>
 </html>
 '''
-        client_socket.send(http_response.encode('ascii'))
+        client_socket.send(http_response.encode())
     else:
       http_response = forward_request(client_socket, request, http_header['Host'], port )
-      client_socket.send(http_response.encode('ascii'))
+      client_socket.send(http_response)
     client_socket.close()
 
 while True:
