@@ -11,9 +11,11 @@ def get_request(client_socket, client_addr):
     request = client_socket.recv(1024)
     # print(request)
     headers = request.decode('ascii').split('\r\n')
-    print(headers)
-    print(headers[0])
-
+    http_header = {}
+    for i in range(len(headers)):
+        split_data = headers[i].split(':')
+        if split_data[0] == 'Host':
+            http_header['Host'] = split_data[1]
     http_response = '''HTTP/1.1 200 OK
 Content-Type: text/html   
 \r\n<html>
