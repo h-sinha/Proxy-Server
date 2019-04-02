@@ -1,5 +1,5 @@
 import socket 
-import threading
+import _thread
 import base64
 proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 proxy_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -29,7 +29,7 @@ def forward_request(client_socket, http_request, server, port):
             break
         client_socket.send(data)
         i = i + 1
-        print(i)
+        print(data)
     proxy_client_socket.close()
     return
 def is_Blocked(host):
@@ -95,7 +95,5 @@ Proxy-Authenticate: Basic realm="Secret"
     client_socket.close()
 
 while True:
-    # print proxy_socket.accept()
     client_socket, client_addr = proxy_socket.accept()
-    thread = threading.Thread(target = get_request, args = (client_socket, client_addr))
-    thread.start()
+    thread = _thread.start_new_thread(get_request, (client_socket, client_addr))
