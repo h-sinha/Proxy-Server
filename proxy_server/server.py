@@ -7,7 +7,7 @@ proxy_socket.bind(('', 20100))
 proxy_socket.listen(10)
 
 data = []
-buffer_size = 1024
+buffer_size = 8192
 with open("blacklist.txt", "r") as f:
     data = f.readlines()
     for i in range(len(data)):
@@ -22,17 +22,16 @@ def forward_request(client_socket, http_request, server, port):
     proxy_client_socket = socket.socket()
     proxy_client_socket.connect((server, port))
     proxy_client_socket.send(http_request)
-    response = []
     i = 1
     while True: 
         data = proxy_client_socket.recv(buffer_size) 
-        if len(data) < buffer_size:
-            response.append(data)
+        if not data:
             break
-        response.append(data)
+        client_socket.send(data)
         i = i + 1
-    return b''.join(response)
-
+        print(i)
+    proxy_client_socket.close()
+    return
 def is_Blocked(host):
     for x in data:
         if x in host:
@@ -63,6 +62,7 @@ def get_request(client_socket, client_addr):
             http_header['Proxy-Authorization'] = split_data[1][1:]
         else:
             new_header.append(headers[i])
+    print(http_header)
     # print(http_header['Proxy-Authorization'].split(' ')[1])
     try:
         if auth(http_header['Proxy-Authorization'].split(' ')[1]) is False:
@@ -78,9 +78,7 @@ def get_request(client_socket, client_addr):
 '''
             client_socket.send(http_response.encode())
         else:
-            http_response = forward_request(client_socket, "\r\n".join(new_header).encode(), http_header['Host'], port)
-            print(http_response)
-            client_socket.send(http_response)
+            forward_request(client_socket, "\r\n".join(new_header).encode(), http_header['Host'], port)
     except Exception as e:
         print(e)
         http_response = '''HTTP/1.1 407 Proxy Authorization Required
