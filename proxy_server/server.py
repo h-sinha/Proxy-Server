@@ -7,9 +7,13 @@ proxy_socket.bind(('', 20100))
 proxy_socket.listen(10)
 
 def get_request(client_socket, client_addr):
-    print (client_socket, client_addr)
+    # print (client_socket, client_addr)
     request = client_socket.recv(1024)
-    print (request)
+    # print(request)
+    headers = request.decode('ascii').split('\r\n')
+    print(headers)
+    print(headers[0])
+
     http_response = '''HTTP/1.1 200 OK
 Content-Type: text/html   
 \r\n<html>
@@ -18,7 +22,7 @@ Content-Type: text/html
 </body>
 </html>
 '''
-    client_socket.send(http_response.encode())
+    client_socket.send(http_response.encode('ascii'))
     client_socket.close()
 
 while True:
@@ -26,4 +30,3 @@ while True:
     client_socket, client_addr = proxy_socket.accept()
     thread = threading.Thread(target = get_request, args = (client_socket, client_addr))
     thread.start()
-    
