@@ -20,7 +20,7 @@ Content-Type: text/html
 </html>
 '''
     client_socket.send(http_response.encode())
-    client_socket.send(data.encode())
+    # client_socket.send(data.encode())
     # client_socket.close()
     # ct = client_thread(clientsocket)
     # ct.run()
