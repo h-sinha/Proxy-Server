@@ -43,19 +43,30 @@ def get_request(client_socket, client_addr):
             http_header['Host'] = split_data[1][1:]
             if len(split_data) > 2:
                 port = int(split_data[2])
-    if is_Blocked(http_header['Host']):
-        http_response = '''HTTP/1.1 200 OK
-Content-Type: text/html   
+        elif split_data[0] == 'Proxy-Authorization':
+            http_header['Proxy-Authorization'] = split_data[1][1:]
+    print(headers)
+    try:
+        print(http_header['Proxy-Authorization'])
+        if is_Blocked(http_header['Host']):
+            http_response = '''HTTP/1.1 200 OK
+\r\nContent-Type: text/html   
 \r\n<html>
 <body>
 <h1>The host you are trying to connect is Blacklisted!</h1>
 </body>
 </html>
 '''
+            client_socket.send(http_response.encode('ascii'))
+        else:
+            http_response = forward_request(client_socket, request, http_header['Host'], port )
+            client_socket.send(http_response.encode('ascii'))
+    except KeyError as e:
+        http_response = '''HTTP/1.1 407 Proxy Authorization Required
+\r\nProxy-Authenticate: Basic realm="Secret"
+'''
         client_socket.send(http_response.encode('ascii'))
-    else:
-      http_response = forward_request(client_socket, request, http_header['Host'], port )
-      client_socket.send(http_response.encode('ascii'))
+        pass
     client_socket.close()
 
 while True:
