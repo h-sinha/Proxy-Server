@@ -15,7 +15,8 @@ def get_request(client_socket, client_addr):
     for i in range(len(headers)):
         split_data = headers[i].split(':')
         if split_data[0] == 'Host':
-            http_header['Host'] = split_data[1]
+            http_header['Host'] = split_data[1][1:]
+    print(http_header['Host'])
     http_response = '''HTTP/1.1 200 OK
 Content-Type: text/html   
 \r\n<html>
