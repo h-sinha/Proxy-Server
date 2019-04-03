@@ -1,2 +1,1 @@
-www.google.com
-www.firefox.com
+0.0.0.0:19999

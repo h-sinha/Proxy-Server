@@ -28,18 +28,22 @@ with open("auth.txt", "r") as f:
 def is_modified(header, server, port, url):
     header = header[0:len(header) - 2] + ["If-Modified-Since: " + time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.localtime(url_access_time[url][0]))] + header[len(header) - 2:]
     proxy_client_socket = socket.socket()
-    proxy_client_socket.settimeout(2)
+    proxy_client_socket.settimeout(5)
     proxy_client_socket.connect((server, port))
     proxy_client_socket.send("\r\n".join(header).encode())
     data = proxy_client_socket.recv(128)
+    if not data:
+        return True
     response = data.decode()
-    if response.split(' ')[2] == "304":
+    print(response.split(' '))
+    if response.split(' ')[1] == "304":
         return True
     else:
         return False
 def forward_request(client_socket, http_request, server, port, url):
     proxy_client_socket = socket.socket()
-    proxy_client_socket.settimeout(2)
+    proxy_client_socket.settimeout(5)
+    print(server)
     proxy_client_socket.connect((server, port))
     proxy_client_socket.send(http_request)
     cur_time = time.time()
@@ -82,6 +86,7 @@ def forward_request(client_socket, http_request, server, port, url):
     proxy_client_socket.close()
     return
 def is_Blocked(host):
+    print(host)
     for x in data:
         if x in host:
             return True
@@ -95,69 +100,57 @@ def auth(credentials):
     return False
 
 def get_request(client_socket, client_addr):
-    try:
-        request = client_socket.recv(1024)
-        headers = request.decode().split('\r\n')
-        http_header = {}
-        port = 80
-        new_header = []
-        split_data = headers[0].split(' ')
-        url = urlparse(split_data[1]).path
-        split_data[1] = url
-        headers[0] = ' '.join(split_data)
-        print("\n".join(headers))
-        if url not in url_access_time:
-            url_access_time[url] = [0, 0, 0]
-        url_access_time[url] = [time.time()] + url_access_time[url][0:2]
-        for i in range(len(headers)):
-            split_data = headers[i].split(':')
-            if split_data[0] == 'Host':
-                new_header.append(headers[i])
-                http_header['Host'] = split_data[1][1:]
-                if len(split_data) > 2:
-                    port = int(split_data[2])
-            elif split_data[0] == 'Proxy-Authorization':
-                http_header['Proxy-Authorization'] = split_data[1][1:]
+    request = client_socket.recv(1024)
+    headers = request.decode().split('\r\n')
+    http_header = {}
+    port = 80
+    server = ""
+    new_header = []
+    split_data = headers[0].split(' ')
+    url = urlparse(split_data[1]).path
+    split_data[1] = url
+    headers[0] = ' '.join(split_data)
+    print("\n".join(headers))
+    if url not in url_access_time:
+        url_access_time[url] = [0, 0, 0]
+    url_access_time[url] = [time.time()] + url_access_time[url][0:2]
+    for i in range(len(headers)):
+        split_data = headers[i].split(' ')
+        if split_data[0] == 'Host:':
+            new_header.append(headers[i])
+            http_header['Host'] = split_data[1]
+            if len(split_data[1].split(':')) > 1:
+                port = int(split_data[1].split(':')[1])
+                server = split_data[1].split(':')[0]
             else:
-                new_header.append(headers[i])
-        try:
-            if auth(http_header['Proxy-Authorization'].split(' ')[1]) is False:
-                raise Exception
-            if is_Blocked(http_header['Host']):
-                http_response = '''HTTP/1.1 200 OK
-\r\nContent-Type: text/html   
-\r\n<html>
-<body>
-<h1>The host you are trying to connect is Blacklisted!</h1>
-</body>
-</html>
-'''
-                client_socket.send(http_response.encode())
-            else:
-                if url in cached_response:
-                    if is_modified(new_header, http_header['Host'], port, url):
-                        forward_request(client_socket, "\r\n".join(new_header).encode(), http_header['Host'], port, url)
-                    else:
-                        client_socket.sendall(cached_response[url])
-                else:
-                    forward_request(client_socket, "\r\n".join(new_header).encode(), http_header['Host'], port, url)
-        except KeyError as e:
-            print(e)
-            http_response = '''HTTP/1.1 407 Proxy Authorization Required
+                server = split_data[1]
+        elif split_data[0] == 'Proxy-Authorization:':
+            http_header['Proxy-Authorization'] = split_data[1]+' '+split_data[2]
+        else:
+            new_header.append(headers[i])
+    if is_Blocked(http_header['Host']) and ('Proxy-Authorization' not in http_header or auth(http_header['Proxy-Authorization'].split(' ')[1]) is False):
+        print("Auth Req")
+        http_response = ''''HTTP/1.1 407 Proxy Authorization Required
 Content-Type: text/html
 Proxy-Authenticate: Basic realm="Secret"
 \r\n<html>
 <body>
+<h1>The host you are trying to connect is Blacklisted!</h1><br />
 <h1>Please Authenticate!</h1>
 </body>
 </html>
 '''
-            client_socket.send(http_response.encode())
-            pass
-        client_socket.close()
-    except:
-        client_socket.close()
-        pass
+        client_socket.send(http_response.encode())
+    else:
+        if url in cached_response:
+            if is_modified(new_header, server, port, url):
+                forward_request(client_socket, "\r\n".join(new_header).encode(), server, port, url)
+            else:
+                client_socket.sendall(cached_response[url])
+        else:
+            forward_request(client_socket, "\r\n".join(new_header).encode(), server, port, url)
+    client_socket.close()
+    return
 
 while True:
     threading.enumerate()
