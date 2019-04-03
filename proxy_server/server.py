@@ -26,7 +26,8 @@ with open("auth.txt", "r") as f:
     for i in range(len(creds)):
         creds[i] = creds[i].strip()
 def is_modified(header, server, port, url):
-    header = header[0:len(header) - 2] + ["If-Modified-Since: " + time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.localtime(url_access_time[url][0]))] + header[len(header) - 2:]
+    # print(url_access_time)
+    header = header[0:len(header) - 2] + ["If-Modified-Since: " + time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.localtime(url_access_time[url][0]-19800))] + header[len(header) - 2:]
     proxy_client_socket = socket.socket()
     proxy_client_socket.settimeout(5)
     proxy_client_socket.connect((server, port))
@@ -35,7 +36,7 @@ def is_modified(header, server, port, url):
     if not data:
         return True
     response = data.decode()
-    print(response.split(' '))
+    # print(url, response.split(' '))
     if response.split(' ')[1] == "304":
         return True
     else:
@@ -43,7 +44,7 @@ def is_modified(header, server, port, url):
 def forward_request(client_socket, http_request, server, port, url):
     proxy_client_socket = socket.socket()
     proxy_client_socket.settimeout(5)
-    print(server, port, "p")
+    # print(server, port, "p")
     proxy_client_socket.connect((server, port))
     proxy_client_socket.send(http_request)
     cur_time = time.time()
@@ -68,7 +69,7 @@ def forward_request(client_socket, http_request, server, port, url):
     while True: 
         try:
             data = proxy_client_socket.recv(buffer_size) 
-            print(data)
+            # print(data)
         except socket.timeout:
             break
             pass
@@ -87,7 +88,6 @@ def forward_request(client_socket, http_request, server, port, url):
     proxy_client_socket.close()
     return
 def is_Blocked(host):
-    print(host)
     for x in data:
         if x in host:
             return True
@@ -108,10 +108,10 @@ def get_request(client_socket, client_addr):
     server = ""
     new_header = []
     split_data = headers[0].split(' ')
-    url = urlparse(split_data[1]).path
-    split_data[1] = url
+    url = split_data[1]
+    rel_url = urlparse(split_data[1]).path
+    split_data[1] = rel_url
     headers[0] = ' '.join(split_data)
-    print("\n".join(headers))
     if url not in url_access_time:
         url_access_time[url] = [0, 0, 0]
     url_access_time[url] = [time.time()] + url_access_time[url][0:2]
@@ -130,7 +130,6 @@ def get_request(client_socket, client_addr):
         else:
             new_header.append(headers[i])
     if is_Blocked(http_header['Host']) and ('Proxy-Authorization' not in http_header or auth(http_header['Proxy-Authorization'].split(' ')[1]) is False):
-        print("Auth Req")
         http_response = ''''HTTP/1.1 407 Proxy Authorization Required
 Content-Type: text/html
 Proxy-Authenticate: Basic realm="Secret"
