@@ -3,7 +3,7 @@ import _thread
 import base64
 import threading
 import time
-
+from urllib.parse import urlparse
 proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 proxy_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 proxy_socket.bind(('', 20100))
@@ -102,7 +102,10 @@ def get_request(client_socket, client_addr):
         port = 80
         new_header = []
         split_data = headers[0].split(' ')
-        url = split_data[1]
+        url = urlparse(split_data[1]).path
+        split_data[1] = url
+        headers[0] = ' '.join(split_data)
+        print("\n".join(headers))
         if url not in url_access_time:
             url_access_time[url] = [0, 0, 0]
         url_access_time[url] = [time.time()] + url_access_time[url][0:2]
@@ -138,7 +141,7 @@ def get_request(client_socket, client_addr):
                         client_socket.sendall(cached_response[url])
                 else:
                     forward_request(client_socket, "\r\n".join(new_header).encode(), http_header['Host'], port, url)
-        except Exception as e:
+        except KeyError as e:
             print(e)
             http_response = '''HTTP/1.1 407 Proxy Authorization Required
 Content-Type: text/html
