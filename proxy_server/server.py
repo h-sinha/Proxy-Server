@@ -4,6 +4,7 @@ import base64
 import threading
 import time
 from urllib.parse import urlparse
+from ipaddress import ip_network, ip_address
 proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 proxy_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 proxy_socket.bind(('', 20100))
@@ -20,6 +21,11 @@ with open("blacklist.txt", "r") as f:
     data = f.readlines()
     for i in range(len(data)):
         data[i] = data[i].strip()
+cidr = []
+with open("cidr.txt", "r") as f:
+    cidr = f.readlines()
+    for i in range(len(cidr)):
+        cidr[i] = cidr[i].strip()
 creds = []
 with open("auth.txt", "r") as f:
     creds = f.readlines()
@@ -90,6 +96,16 @@ def forward_request(client_socket, http_request, server, port, url):
 def is_Blocked(host):
     for x in data:
         if x in host:
+            return True
+    host_ip = host
+    try:
+        socket.inet_aton(host_ip)
+        host_ip = ip_address(socket.gethostbyname(host))
+    except socket.error:
+        pass
+    for y in cidr:
+        net = ip_network(y)
+        if host_ip in net:
             return True
     return False
 
