@@ -1,6 +1,8 @@
 import socket 
 import _thread
 import base64
+import threading
+
 proxy_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 proxy_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 proxy_socket.bind(('', 20100))
@@ -18,18 +20,20 @@ with open("auth.txt", "r") as f:
     for i in range(len(creds)):
         creds[i] = creds[i].strip()
 def forward_request(client_socket, http_request, server, port):
-    # print(http_request.decode())
     proxy_client_socket = socket.socket()
+    proxy_client_socket.settimeout(2)
     proxy_client_socket.connect((server, port))
     proxy_client_socket.send(http_request)
-    i = 1
     while True: 
-        data = proxy_client_socket.recv(buffer_size) 
+        try:
+            data = proxy_client_socket.recv(buffer_size) 
+        except socket.timeout:
+            break
+            pass
         if not data:
+            client_socket.send(data)
             break
         client_socket.send(data)
-        i = i + 1
-        print(data)
     proxy_client_socket.close()
     return
 def is_Blocked(host):
@@ -62,8 +66,6 @@ def get_request(client_socket, client_addr):
             http_header['Proxy-Authorization'] = split_data[1][1:]
         else:
             new_header.append(headers[i])
-    print(http_header)
-    # print(http_header['Proxy-Authorization'].split(' ')[1])
     try:
         if auth(http_header['Proxy-Authorization'].split(' ')[1]) is False:
             raise Exception
@@ -95,5 +97,8 @@ Proxy-Authenticate: Basic realm="Secret"
     client_socket.close()
 
 while True:
-    client_socket, client_addr = proxy_socket.accept()
-    thread = _thread.start_new_thread(get_request, (client_socket, client_addr))
+    threading.enumerate()
+    (client_socket, client_addr) = proxy_socket.accept()
+    thread = threading.Thread(target = get_request, args = (client_socket, client_addr))
+    thread.setDaemon(True)
+    thread.start()
