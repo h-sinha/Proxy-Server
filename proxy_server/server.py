@@ -25,6 +25,18 @@ with open("auth.txt", "r") as f:
     creds = f.readlines()
     for i in range(len(creds)):
         creds[i] = creds[i].strip()
+def is_modified(header, server, port, url):
+    header = header[0:len(header) - 2] + ["If-Modified-Since: " + time.strftime("%a, %d %b %Y %H:%M:%S GMT", time.localtime(url_access_time[url][0]))] + header[len(header) - 2:]
+    proxy_client_socket = socket.socket()
+    proxy_client_socket.settimeout(2)
+    proxy_client_socket.connect((server, port))
+    proxy_client_socket.send("\r\n".join(header).encode())
+    data = proxy_client_socket.recv(128)
+    response = data.decode()
+    if response.split(' ')[2] == "304":
+        return True
+    else:
+        return False
 def forward_request(client_socket, http_request, server, port, url):
     proxy_client_socket = socket.socket()
     proxy_client_socket.settimeout(2)
@@ -119,7 +131,13 @@ def get_request(client_socket, client_addr):
 '''
                 client_socket.send(http_response.encode())
             else:
-                forward_request(client_socket, "\r\n".join(new_header).encode(), http_header['Host'], port, url)
+                if url in cached_response:
+                    if is_modified(new_header, http_header['Host'], port, url):
+                        forward_request(client_socket, "\r\n".join(new_header).encode(), http_header['Host'], port, url)
+                    else:
+                        client_socket.sendall(cached_response[url])
+                else:
+                    forward_request(client_socket, "\r\n".join(new_header).encode(), http_header['Host'], port, url)
         except Exception as e:
             print(e)
             http_response = '''HTTP/1.1 407 Proxy Authorization Required
