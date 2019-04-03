@@ -43,7 +43,7 @@ def is_modified(header, server, port, url):
 def forward_request(client_socket, http_request, server, port, url):
     proxy_client_socket = socket.socket()
     proxy_client_socket.settimeout(5)
-    print(server)
+    print(server, port, "p")
     proxy_client_socket.connect((server, port))
     proxy_client_socket.send(http_request)
     cur_time = time.time()
@@ -68,6 +68,7 @@ def forward_request(client_socket, http_request, server, port, url):
     while True: 
         try:
             data = proxy_client_socket.recv(buffer_size) 
+            print(data)
         except socket.timeout:
             break
             pass
